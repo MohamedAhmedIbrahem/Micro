@@ -100,7 +100,17 @@ fcursorp dw 0
 scursorp dw 0c00h 
 temppos  dw ?
 startpos dw ? 
-endpos   dw ? 
+endpos   dw ?
+UppersPos  dw  0
+Upperepos  dw  0A4fh
+LowersPos  dw  0c00h
+Lowerepos  dw  164fh  
+lineStart  db  0
+lineEnd    db  79d  
+barrier    db  0bh
+UpperLine  dw  0b00h
+LowerLine  dw  1700h
+
 valuer   db ?   ;recieved value
 values   db ?   ;sent value
 .code                   
@@ -120,7 +130,7 @@ main proc far
     jz exitGame
     cmp mainmenuresult,2
     jnz startGame
-    call chat
+    call outlinechat 
     startGame:
     ;initilization
     
@@ -149,13 +159,7 @@ main proc far
     
     call DRAWOBSTACLES
     call drawLtank
-    call drawRtank
-    
-    mov xtemp,155
-    mov ytemp,
-    call addbullet
-    inc ytemp
-    cmp ytemp,bottomliney 
+    call drawRtank 
        
     ;take input
     mov ah, 1
@@ -1261,33 +1265,18 @@ wallDraw:
     ret    
 drawWallPaper endp 
 
+outlineChat proc
+    call confoutline
+    call chat   
+    ret
+outlineChat ENDP  
+
+inlineChat  proc 
+    call confinline
+    call chat
+    ret
+inlineChat  ENDP    
 chat  proc
-    ;text mode  
-    mov ah,0
-    mov al,3
-    int 10h
-      
-    ;move cursor to draw line in the middle of the screen 
-    mov dx,0b00h
-    mov ah,2       
-    int 10h
-    ;draw line
-    mov cx,80 
-    mov dl,'_'
-    mLine:int 21h
-    loop mline 
-    mov dx,1700h
-    mov ah,2       
-    int 10h
-    mov cx,80 
-    mov dl,'_'
-    mLine2:int 21h
-    loop mline2
-    mov dx,0
-    mov ah,2       
-    int 10h 
-    call init
-    
 lbl: 
 ;Check that Transmitter Holding Register is Empty
 		mov dx , 3FDH		;Line Status Register
@@ -1309,9 +1298,11 @@ cmp ah,48h
 jz upB
 cmp ah,50h
 jz downB
-contB:
-mov startpos,0 
-mov endpos,0A4fh
+contB: 
+mov di,Upperspos
+mov startpos,di
+mov di,Upperepos 
+mov endpos,di
 mov di,fcursorp
 mov temppos,di
 call check2
@@ -1336,8 +1327,10 @@ CHK:	in al , dx
   		mov dx , 03F8H
   		in al , dx 
   		mov VALUE , al
-  		mov startpos,0c00h 
-  		mov endpos,164fh
+  		mov di,Lowerspos
+  		mov startpos,di
+  		mov di,Lowerepos
+  		mov endpos,di
   		mov di,scursorp
   		mov temppos,di 
   		call check2
@@ -1383,12 +1376,12 @@ check2 proc
         mov dx,temppos             
         cmp dx,startpos
         jz leave2
-        cmp dl,0
+        cmp dl,LineStart
         jz back
         dec dl
         jmp back2
         back:
-        mov dl,79
+        mov dl,LineEnd
         dec dh
         back2:
         mov ah,2
@@ -1422,13 +1415,13 @@ check2 proc
         mov dx,temppos 
         cmp dx,startpos
         jz leave2
-        cmp dl,0
+        cmp dl,LineStart
         jz left2
         dec dl
         jmp left3
         left2:
         dec dh
-        mov dl,79d
+        mov dl,LineEnd
         left3:
         mov ah,2
         int 10h
@@ -1440,13 +1433,13 @@ check2 proc
         mov dx,temppos 
         cmp dx,endpos
         jz scroll1;--------------------------------------------------
-        cmp dl,79d
+        cmp dl,LineEnd
         jz right2
         inc dl
         jmp right3
         right2:
         inc dh
-        mov dl,0
+        mov dl,LineStart
         right3:
         mov ah,2
         int 10h
@@ -1461,9 +1454,9 @@ check2 proc
     mov ah,3
     int 10h
     mov temppos,dx
-    cmp temppos,0b00h
+    cmp dx,UpperLine
     jz scroll2
-    cmp temppos,1700h
+    cmp dx,LowerLine
     jz scroll2 
     jmp leave2
     scroll1:
@@ -1476,19 +1469,22 @@ check2 proc
     ret
 check2 ENDP
 scroll proc 
-    
     pusha
     mov cx,temppos
-    cmp ch,0bh
+    cmp ch,barrier
     ja  lowerhalf
     jmp upperhalf
-    lowerhalf:
-    mov startpos,0c00h
-    mov endpos,164fh
+    lowerhalf:            
+    mov di,Lowerspos
+    mov startpos,di
+    mov di,Lowerepos
+    mov endpos,di
     jmp do_it  
     upperhalf:
-    mov startpos,0
-    mov endpos,0a4fh
+    mov di,Upperspos
+    mov startpos,di
+    mov di,Upperepos
+    mov endpos,di
     do_it:
     mov     ah, 06h ; scroll down function id.
     mov     al, 1   ; lines to scroll.
@@ -1505,6 +1501,81 @@ scroll proc
     popa  
     ret
 scroll  ENDP
+confoutline   proc 
+    ;text mode  
+    mov ah,0
+    mov al,3
+    int 10h  
+    ;move cursor to draw line in the middle of the screen 
+    mov dx,0b00h
+    mov ah,2       
+    int 10h
+    ;draw line
+    mov cx,80 
+    mov dl,'_'
+    mLine:int 21h
+    loop mline 
+    mov dx,1700h
+    mov ah,2       
+    int 10h
+    mov cx,80 
+    mov dl,'_'
+    mLine2:int 21h
+    loop mline2
+    mov dx,0
+    mov ah,2       
+    int 10h 
+    mov UppersPos,0
+    mov Upperepos,0A4fh
+    mov LowersPos,0c00h
+    mov Lowerepos,164fh  
+    mov lineStart,0
+    mov lineEnd,79d 
+    mov barrier,0bh
+    mov UpperLine,0b00h
+    mov LowerLine,1700h
+    mov fcursorp,0
+    mov scursorp,0c00h
+    ret
+confoutline   ENDP 
+
+confinline  proc 
+    ;text mode  
+    mov ah,0
+    mov al,3
+    int 10h  
+    ;move cursor to draw line in the middle of the screen 
+    mov dx,0b00h
+    mov ah,2       
+    int 10h
+    ;draw line
+    mov cx,80 
+    mov dl,'_'
+    mLine3:int 21h
+    loop mline3 
+    mov dx,0f00h
+    mov ah,2       
+    int 10h
+    mov cx,80 
+    mov dl,'_'
+    mLine4:int 21h
+    loop mline4
+    mov dx,0c00h
+    mov ah,2       
+    int 10h 
+    mov UppersPos,0c00h
+    mov Upperepos,0c4fh
+    mov LowersPos,0e00h
+    mov Lowerepos,0e4fh  
+    mov lineStart,0
+    mov lineEnd,79d 
+    mov barrier,0dh
+    mov UpperLine,0d00h
+    mov LowerLine,0f00h
+    mov fcursorp,0c00h
+    mov scursorp,0e00h
+    ret
+confinline  ENDP
 init   proc  
     ;initialize 
     ;Set Divisor Latch Access Bit
