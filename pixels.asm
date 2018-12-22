@@ -83,6 +83,11 @@ tempX dw ?
 tempY dw ? 
 state db ?
 
+random1x dw ?
+random1y dw ?
+random2x dw ?
+random2y dw ?
+
 rectempx dw ?
 rectempy dw ?
 ;Health bars
@@ -123,7 +128,6 @@ main proc far
     call chat
     startGame:
     ;initilization
-    
     call init 
     call clearBullets
     mov timetodisplay,60d
@@ -146,16 +150,9 @@ main proc far
     call clearScreen
 
     call drawLines
-    
     call DRAWOBSTACLES
     call drawLtank
     call drawRtank
-    
-    mov xtemp,155
-    mov ytemp,
-    call addbullet
-    inc ytemp
-    cmp ytemp,bottomliney 
        
     ;take input
     mov ah, 1
@@ -300,20 +297,12 @@ main proc far
      
      ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;recieve  
     RECIEVE1:   
-        ;Check that Data Ready
-		mov dx , 3FDH		; Line Status Register
-    	in al , dx 
-  		AND al , 1
-  		JZ cont 
-        ;If Ready read the VALUE in Receive data register
-  		mov dx , 03F8H
-  		in al , dx 
-  		mov VALUEr , al 
-  		
+        receivem 
   		mov ah,valuer
     rUp:    
     cmp ah, up
-    jnz rDown  
+    jnz rDown 
+    call flush 
         ;upper left point of the cannon
         dec rTankY
         check rTankX, rTankY, state, 0
@@ -342,6 +331,7 @@ main proc far
     rDown:    
     cmp ah, down
     jnz rRight
+    call flush
         ;lower right point of the cannon
         add rTankY, cannonLength+1  
         check rTankX, rTankY, state, 0 
@@ -370,6 +360,7 @@ main proc far
     rRight:
     cmp ah, right
     jnz rLeft 
+    call flush
         ;upper right point of the tank
         add rTankX, cannonWidth+tankWidth+1
         sub rTankY, cannonLength 
@@ -391,7 +382,8 @@ main proc far
 
     rLeft:         
     cmp ah, left
-    jnz rshoot  
+    jnz rshoot 
+    call flush 
         ;upper left point of the cannon
         dec rTankX
         check rTankX, rTankY, state, 0
@@ -428,6 +420,7 @@ main proc far
     
     rshoot:         
     cmp ah, lfireb 
+    call flush
     jnz cont 
     pusha
     mov bx,rtankx
@@ -445,19 +438,23 @@ main proc far
     jz rwin
     cmp rcurrentbar,0
     jz lwin 
-    call DrawHealthBar     
+    call DrawHealthBar
     call DrawBullets
     pusha
     mov cx,2
-    looop:
-    call MoveBullets   
+    looop: 
+    receivem
+    call MoveBullets
+    receivem   
     loop looop
     popa
     call timer 
     ;check who won
     cmp timetodisplay,0ffh
     jz checkwinning
-    continue:         
+    continue:
+    receivem
+             
     call wait
     jmp gameLoop
     
@@ -1045,7 +1042,7 @@ MoveBullets proc
              ;mov di,si
              jmp goahead  
 blowerpointcheck:;the scond check as befor but for the down left corner of bullet
-             sub cx,bheight
+             add cx,bheight
              mov auxulary+2,si;save offset of current obstacle y-postion
              cmp cx,[si]
              pushf
@@ -1071,7 +1068,7 @@ blowerpointcheck:;the scond check as befor but for the down left corner of bulle
              sub si,2
              sub counter,2
              mov di,si
-             sub [di],30;original y of abstacle  
+             ;sub [di],30;original y of abstacle  
              
        goahead:;------------------------------------------------------------------ 
              mov bx,[di];mov y to bx 
@@ -1524,20 +1521,29 @@ init   proc
     mov al,00011011b
     out dx,al 
     ret
-init   ENDP
-RandomBullets  proc
-    pusha  
-    
-    kkk:
-    mov xtemp,155
-    mov ytemp, topliney
-    call addbullet
-    inc ytemp
-    cmp ytemp,bottomliney 
-    jnz kkk
-        
-    popa
+init   ENDP 
+RandomBullets proc
+    pusha
+    mov random1x,154
+    mov random1y,25
+    mov random2x,166
+    mov random2y,30
+    loopon: mov ax,random1x
+            mov tempx,ax
+            mov ax,random1y
+            mov tempy,ax
+            call addbullet
+            mov ax,random2x
+            mov tempx,ax
+            mov ax,random2y
+            mov tempy,ax
+            call addbullet
+            add random1y,10
+            add random2y,10
+            cmp random2y,155
+            jb loopon 
+            popa
     ret
-RandomBullets  endp    
+RandomBullets endp
 end main 
  

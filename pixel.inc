@@ -18,11 +18,12 @@ DRAWRECT MACRO  x,y,width,height,color
             jnz label4
         inc dx
         cmp dx,bx
-        jnz label3
-	popa 
+        jnz label3 
+	popa
 ENDM DRAWRECT   
 
 check MACRO x,y,state,color  ;check if the given pixel has the given color
+    
 	local  exit
 	pusha
 	mov state, 0
@@ -34,8 +35,8 @@ check MACRO x,y,state,color  ;check if the given pixel has the given color
         cmp al,color
 	jnz exit
 	inc state 
-	exit: 
-	popa    
+	exit:
+	popa     
 ENDM  check 
 
 DisplayMessage MACRO position,message
@@ -49,3 +50,16 @@ DisplayMessage MACRO position,message
 	int 21h
 	popa
 ENDM DisplayMessage
+Receivem Macro
+		pusha
+		;Check that Data Ready
+		mov dx , 3FDH		; Line Status Register
+    	in al , dx 
+  		AND al , 1
+  		JZ cont 
+        ;If Ready read the VALUE in Receive data register
+  		mov dx , 03F8H
+  		in al , dx 
+  		mov VALUEr , al 
+		popa
+ENDM Receivem
