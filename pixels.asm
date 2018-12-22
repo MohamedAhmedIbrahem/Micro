@@ -37,17 +37,24 @@ Display db ?,?,'$'
 currenttime db ?
 timetodisplay db 60 
 ;menu vars
-mes1 db 'Start chatting ','$'
-mes2 db 'Start game ','$'
-mes3 db 'End game','$'
+mes1 db '*Press 1 to Start chatting ','$'
+mes2 db '*Press 2 to Start game ','$'
+mes3 db '*Press ESC to End game','$'
+mes4 db '-You Sent a chat invitation to $'
+mes5 db '-You Sent a game invitation to $'
+one  db 02h   ;scan code
+two  db 03h
+esc  db 01h
 winMes db ' won','$'
 mes6 db 'Draw :)','$' 
 ;players name
 msg0 db 'All names should start with a letter $'
 msg1 db 'Enter First Player Name:$'
-msg2 db 'Enter Second Player Name:$'
+msg2 db 'Press Enter to continue$'
+GameInvitation db 'sent you a game invitation ,to accept press F2 $'
+ChatInvitation db 'sent you a chat invitation ,to accept press F1 $'
 FirstPName  db  16,?,16 dup('$'),'$'
-SecondPName db  16,?,16 dup('$'),'$'
+
 ;positions and constants
 PxWindowWidth equ 320
 PxWindowLength equ 200
@@ -131,6 +138,9 @@ main proc far
     cmp mainmenuresult,2
     jnz startGame
     call outlinechat 
+     
+
+    
     startGame:
     ;initilization
     
@@ -536,24 +546,38 @@ TakeNames proc
     mov dx,184FH 
     int 10h 
     popa        
-    ;move cursor to 0,0
+    ;move cursor 
     mov ah,2
     mov bh,0
-    mov dx,0h
+    mov dx,0a18h
     int 10h 
     ;view head Message
     mov ah, 9
     mov dx, offset msg0 
     int 21h
-    ;move cursor to 0,2
+    ;move cursor
     mov ah,2
     mov bh,0
-    mov dx,0200h
+    mov dx,0b18h
     int 10h 
     ;view First Message
     mov ah, 9
     mov dx, offset msg1 
-    int 21h
+    int 21h 
+    ;move cursor
+    mov ah,2
+    mov bh,0
+    mov dx,0c18h
+    int 10h 
+    ;view Second Message
+    mov ah, 9
+    mov dx, offset msg2 
+    int 21h 
+    ;move cursor
+    mov ah,2
+    mov bh,0
+    mov dx,0b2ah
+    int 10h
     ;take first player name
     mov ah,0AH
     mov dx,offset FirstPName 
@@ -570,38 +594,10 @@ TakeNames proc
            cmp al,7ah
            ja  again
            
-    forward:
-    ;second name
-    ;move cursor to 0,4
-    mov ah,2
-    mov bh,0
-    mov dx,0400h
-    int 10h 
-    ;view second Message
-    mov ah, 9
-    mov dx, offset msg2 
-    int 21h
-    ;take second player name
-    mov ah,0Ah
-    mov dx,offset SecondPName 
-    int 21h
-      
-    mov al,SecondPName[2]
-    cmp al,41h
-    jb  again
-    cmp al,5ah
-    ja  check1
-    jmp forward1
-check1: cmp al,61h
-       jb  again
-       cmp al,7ah
-       ja  again
-       
-forward1:  
+    forward:  
     popa
     ret
-TakeNames ENDP
-
+takenames endp 
 drawRtank proc 
     drawRect RTankX, RTankY, cannonWidth, cannonLength, 01h
     mov ax, RTankX
@@ -721,80 +717,56 @@ timer proc
         ret
 timer endp  
 drawMenu proc    ;0: Start game 1:End game 2:Chatting
-        mov ah, 0
-        mov al, 13h
-        int 10h
-        DisplayMessage 0a0dh,mes1 
-        DisplayMessage 0c0dh,mes2
-        DisplayMessage 0e0dh,mes3
-        ;move cursor to move between choices
-	    mov dh,0ah
-	    mov bx,0
-	    mov cx,0a0bh 
-	    mov si,0a0bh
-	    
-l20:    mov dx,cx
-        mov ah,2
-        int 10h 
+    
+	    mov ah,0
+        mov al,3h
+        int 10h  
         
-	    mov ah,2
-	    mov dl,00h
-	    int 21h
-	    
-        mov dx,si
-        mov ah,2
-        int 10h
+        DisplayMessage 0a18h,mes1 
+        DisplayMessage 0c18h,mes2
+        DisplayMessage 0e18h,mes3 
         
-	    mov ah,2
-	    mov dl,10h
-	    int 21h 
-	    
-	    mov dl,0bh
-	    mov si,dx
-	     
-	    
-        ;L2: 
+        ;Draw Notification bar line
+        mov dx,1500h
+        mov ah,2       
+        int 10h
+        ;draw line
+        mov cx,80 
+        mov dl,'_'
+        nbar:int 21h
+        loop nbar
+        
+l20: 
         mov ah,0 
 	    int 16h 
-	    ;jz l2
-        cmp ah,50h
-        jz Down1
-        cmp ah,48h
-        jz up1 
-        cmp ah,1ch
-        jz Enter1
+	    
+        cmp ah,one
+        jz chat
+        cmp ah,two
+        jz game 
+        cmp ah,esc
+        jz exit
+        jmp l20
 
-UP1:    cmp dh,0ah
-        ja up2
-        jmp l20         
-UP2:    mov cx,dx
-        sub dh,2 
-        mov si,dx
-        jmp l20
-Down1:  cmp dh,0eh
-        jb down2
-        jmp l20         
-Down2:  mov cx,dx
-        add dh,2
-        mov si,dx
-        jmp l20  
-Enter1: cmp si,0c0bh
-        jz enter2
-        cmp si,0e0bh
-        jz enter3  
-        cmp si,0a0bh
-        jz enter4
-        jmp l20
-Enter2:	  
+
+chat:	  
          mov mainmenuresult,0
+         mov dx,1600h
+         DisplayMessage dx,mes4
          ret
-Enter3:  
-         mov mainmenuresult,1 
-         ret
-Enter4:  
+         
+game:  
+         mov mainmenuresult,1
+         mov dx,1600h
+         DisplayMessage dx,mes5
+         ret 
+         
+exit:  
          mov mainmenuresult,2
          ret
-drawMenu ENDP 
+
+drawMenu endp 
+
 DRAWOBSTACLES  proc 
     pusha
     mov si,offset obstaclexposition
@@ -817,8 +789,6 @@ DRAWOBSTACLES  proc
 leave:popa
     ret
 DRAWOBSTACLES  ENDP
-
-
 
 DrawHealthBar proc 
     
