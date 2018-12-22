@@ -117,6 +117,7 @@ main proc far
     int 10h
     call drawWallpaper
     
+    call init
     call takeNames
     
     menu:    
@@ -128,7 +129,6 @@ main proc far
     call chat
     startGame:
     ;initilization
-    call init 
     call clearBullets
     mov timetodisplay,60d
     mov lcurrentbar,8
@@ -443,9 +443,9 @@ main proc far
     pusha
     mov cx,2
     looop: 
-    receivem
+    ;receivem
     call MoveBullets
-    receivem   
+    ;receivem   
     loop looop
     popa
     call timer 
@@ -453,9 +453,10 @@ main proc far
     cmp timetodisplay,0ffh
     jz checkwinning
     continue:
-    receivem
+    ;receivem
              
     call wait
+    ;receivem
     jmp gameLoop
     
     checkwinning:
@@ -1283,7 +1284,7 @@ chat  proc
     mov dx,0
     mov ah,2       
     int 10h 
-    call init
+    ;call init  ;already called in the start of the program
     
 lbl: 
 ;Check that Transmitter Holding Register is Empty
