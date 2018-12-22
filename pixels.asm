@@ -1,4 +1,4 @@
-include pixel.inc
+include pixelF.inc
 
 .MODEL huge
 .STACK 64        
@@ -42,7 +42,7 @@ mes2 db '*Press 2 to Start game ','$'
 mes3 db '*Press ESC to End game','$'
 mes4 db '-You Sent a chat invitation to $'
 mes5 db '-You Sent a game invitation to $'
-mes6 db 'press Esc to exit chatting $'
+mes7 db 'press Esc to exit chatting $'
 one  db 02h   ;scan code
 two  db 03h
 esc  db 01h
@@ -1579,7 +1579,7 @@ confoutline   proc
     mov dl,'_'
     mLine2:int 21h
     loop mline2
-    displaymessage 1800h,mes6
+    displaymessage 1800h,mes7
     mov dx,0
     mov ah,2       
     int 10h
