@@ -124,8 +124,8 @@ LowerLine  dw  1700h
 valuer     db ?   ;recieved value
 values     db ?   ;sent value 
 
-sendvar    db 1
-recievevar db 0
+sendvar    db 0E9h
+recievevar db 0E8h
 
 .code                   
 main proc far
@@ -763,9 +763,7 @@ drawMenu proc    ;0: Start game 1:End game 2:Chatting
         mov dl,'_'
         nbar:int 21h
         loop nbar 
-        
-
-        
+        mov sendvar,0E9h
 l20: 
         mov ah,1 
 	    int 16h 
@@ -1348,8 +1346,6 @@ cmp ah,48h
 jz upB
 cmp ah,50h
 jz downB
-cmp ah,esc
-jz leave4
 contB: 
 mov di,Upperspos
 mov startpos,di
@@ -1368,7 +1364,9 @@ mov al,value
 ;If empty put the VALUE in Transmit data register
   	mov dx, 3F8H		; Transmit data register
   	out dx, al
-    
+cmp al,1Bh
+jz leave4
+   
 RECIEVE:   
 ;Check that Data Ready
 		mov dx , 3FDH		; Line Status Register
@@ -1376,11 +1374,13 @@ CHK:	in al , dx
   		AND al , 1
   		JZ lbl 
  ;If Ready read the VALUE in Receive data register
-  		mov dx , 03F8H
+  		mov dx,03F8H
   		in al , dx 
   		mov VALUE , al
-  		cmp al,esc
+  		cmp al,1Bh
   		jz  leave4
+  		cmp al,1
+  		jz lbl
   		mov di,Lowerspos
   		mov startpos,di
   		mov di,Lowerepos
@@ -1424,6 +1424,8 @@ check2 proc
     cmp value,0EDh
     jz leave3
     cmp value,9     ;tap
+    jz leave3 
+    cmp value,1Bh
     jz leave3
     pusha 
     jmp leaveit
