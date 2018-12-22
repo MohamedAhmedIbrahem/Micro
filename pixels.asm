@@ -49,7 +49,7 @@ winMes db ' won','$'
 mes6 db 'Draw :)','$' 
 ;players name
 msg0 db 'All names should start with a letter $'
-msg1 db 'Enter First Player Name:$'
+msg1 db 'Enter Your Name:$'
 msg2 db 'Press Enter to continue$'
 GameInvitation db 'sent you a game invitation ,to accept press F2 $'
 ChatInvitation db 'sent you a chat invitation ,to accept press F1 $'
@@ -127,7 +127,7 @@ main proc far
     
     mov ax, 0003h
     int 10h
-    call drawWallpaper
+    ;call drawWallpaper
     
     call takeNames
     
@@ -138,7 +138,7 @@ main proc far
     cmp mainmenuresult,2
     jnz startGame
     call outlinechat 
-     
+    jmp menu 
 
     
     startGame:
@@ -741,28 +741,28 @@ l20:
 	    int 16h 
 	    
         cmp ah,one
-        jz chat
+        jz chat1
         cmp ah,two
-        jz game 
+        jz game1 
         cmp ah,esc
-        jz exit
+        jz exit1
         jmp l20
 
 
-chat:	  
-         mov mainmenuresult,0
+chat1:	  
+         mov mainmenuresult,2
          mov dx,1600h
          DisplayMessage dx,mes4
          ret
          
-game:  
-         mov mainmenuresult,1
+game1:  
+         mov mainmenuresult,0
          mov dx,1600h
          DisplayMessage dx,mes5
          ret 
          
-exit:  
-         mov mainmenuresult,2
+exit1:  
+         mov mainmenuresult,1
          ret
 
 drawMenu endp 
@@ -822,8 +822,6 @@ rHealthBars:
     cmp si,di
     jnz rHealthBars
     DisplayMessage 1700h,FirstPname+2 
-    DisplayMessage 1719h,SecondPname+2 
-
     popa 
  k:  ret
 DrawHealthBar ENDP
@@ -1268,6 +1266,8 @@ cmp ah,48h
 jz upB
 cmp ah,50h
 jz downB
+cmp ah,esc
+jz leave4
 contB: 
 mov di,Upperspos
 mov startpos,di
@@ -1322,7 +1322,8 @@ CHK:	in al , dx
     jmp contB
     downB:
     mov value,0EDh
-    jmp contB  		
+    jmp contB
+    leave4:  		
     ret
 chat  endp 
 check2 proc
