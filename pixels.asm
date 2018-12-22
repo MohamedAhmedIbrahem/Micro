@@ -42,6 +42,7 @@ mes2 db '*Press 2 to Start game ','$'
 mes3 db '*Press ESC to End game','$'
 mes4 db '-You Sent a chat invitation to $'
 mes5 db '-You Sent a game invitation to $'
+mes6 db 'press Esc to exit chatting $'
 one  db 02h   ;scan code
 two  db 03h
 esc  db 01h
@@ -77,7 +78,8 @@ up equ 48h
 left equ 4bh
 down equ 50h
 right equ 4dh 
-lfireb db 10h ;'Q' ASCII code 
+lfireb equ 10h ;'Q' scan code 
+p  equ 19h
 tempa dw ?
 tempb dw ?
 counter dw ?
@@ -125,12 +127,11 @@ main proc far
     mov ax, @data 
     mov ds, ax
     
+    call takeNames 
+    
     mov ax, 0003h
     int 10h
     ;call drawWallpaper
-    
-    call takeNames
-    
     menu:    
     call drawMenu
     cmp mainmenuresult,1
@@ -303,7 +304,7 @@ main proc far
 
     lshoot:             
     cmp ah, lfireb 
-    jnz RECIEVE1
+    jnz lescape
     pusha
     mov bx,ltankx
     mov xtemp,bx 
@@ -311,6 +312,17 @@ main proc far
     mov ytemp,cx 
     popa
     call ADDBULLET
+    jmp RECIEVE1
+    
+    lescape:
+    cmp ah,esc
+    jnz lpause
+    jmp menu
+    
+    lpause:
+    cmp ah,p
+    jnz RECIEVE1
+    call inlineChat
      
      ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;recieve  
     RECIEVE1:   
@@ -442,7 +454,7 @@ main proc far
     
     rshoot:         
     cmp ah, lfireb 
-    jnz cont 
+    jnz rescape 
     pusha
     mov bx,rtankx
     mov xtemp,bx
@@ -452,8 +464,18 @@ main proc far
     mov ytemp,cx
     popa
     call ADDBULLET
-
-
+    jmp cont 
+    
+    rescape:
+    cmp ah,esc
+    jnz rpause
+    jmp menu
+    
+    rpause:
+    cmp ah,p
+    jnz cont
+    call inlineChat
+    
     cont:
     cmp lcurrentbar,0
     jz rwin
@@ -519,7 +541,7 @@ main proc far
     
     exitGame: 
     mov ax, 0003h
-    int 10h
+    int 10h  
     mov ah, 4ch
     int 21h
 main endp         
@@ -1297,6 +1319,8 @@ CHK:	in al , dx
   		mov dx , 03F8H
   		in al , dx 
   		mov VALUE , al
+  		cmp al,esc
+  		jz  leave4
   		mov di,Lowerspos
   		mov startpos,di
   		mov di,Lowerepos
@@ -1338,6 +1362,8 @@ check2 proc
     cmp value,0ECh
     jz leave3
     cmp value,0EDh
+    jz leave3
+    cmp value,9     ;tap
     jz leave3
     pusha 
     jmp leaveit
@@ -1493,9 +1519,11 @@ confoutline   proc
     mov dl,'_'
     mLine2:int 21h
     loop mline2
+    displaymessage 1800h,mes6
     mov dx,0
     mov ah,2       
-    int 10h 
+    int 10h
+     
     mov UppersPos,0
     mov Upperepos,0A4fh
     mov LowersPos,0c00h
