@@ -133,10 +133,8 @@ main proc far
     mov ds, ax
     
     call takeNames 
-    
     mov ax, 0003h
     int 10h
-
     call drawWallpaper
     menu:    
 
@@ -146,19 +144,8 @@ main proc far
     cmp mainmenuresult,2
     jnz startGame 
     ;send chat invitation
-
-  	
-  	 
-
-  	
-  	
-    
     call outlinechat 
-
     jmp menu
-     
-
-
     
     startGame:
     ;initilization
@@ -831,7 +818,6 @@ l20:
         cmp ah,esc
         jz exit1
         jmp l20
-
     chatinvitations:
         mov dx,1600h
         DisplayMessage dx,mes4
@@ -855,10 +841,7 @@ chat1:
          
 game1:  
          mov mainmenuresult,0
-
          ret 
-  
-
 exit1:  
          mov mainmenuresult,1
          ret
