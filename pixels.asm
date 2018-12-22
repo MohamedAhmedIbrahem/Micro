@@ -302,7 +302,7 @@ main proc far
     rUp:    
     cmp ah, up
     jnz rDown 
-    call flush 
+     
         ;upper left point of the cannon
         dec rTankY
         check rTankX, rTankY, state, 0
@@ -331,7 +331,7 @@ main proc far
     rDown:    
     cmp ah, down
     jnz rRight
-    call flush
+    
         ;lower right point of the cannon
         add rTankY, cannonLength+1  
         check rTankX, rTankY, state, 0 
@@ -360,7 +360,7 @@ main proc far
     rRight:
     cmp ah, right
     jnz rLeft 
-    call flush
+    
         ;upper right point of the tank
         add rTankX, cannonWidth+tankWidth+1
         sub rTankY, cannonLength 
@@ -383,7 +383,7 @@ main proc far
     rLeft:         
     cmp ah, left
     jnz rshoot 
-    call flush 
+     
         ;upper left point of the cannon
         dec rTankX
         check rTankX, rTankY, state, 0
@@ -420,7 +420,7 @@ main proc far
     
     rshoot:         
     cmp ah, lfireb 
-    call flush
+    
     jnz cont 
     pusha
     mov bx,rtankx
