@@ -87,6 +87,10 @@ random1x dw ?
 random1y dw ?
 random2x dw ?
 random2y dw ?
+firedflag db 0
+levelflag db 2
+
+
 
 rectempx dw ?
 rectempy dw ?
@@ -434,6 +438,22 @@ main proc far
 
 
     cont:
+    ;add Wave bullets in level 2
+    cmp levelflag,2
+    jnz ignore1
+    cmp firedflag,1
+    jz ignore1
+    cmp timetodisplay,40
+    jz  startwave
+    cmp timetodisplay,30
+    jz  startwave
+    cmp timetodisplay,20
+    jz  startwave
+    cmp timetodisplay,10
+    jnz ignore1
+startwave:    call randombullets
+              mov firedflag,1
+ignore1:    
     cmp lcurrentbar,0
     jz rwin
     cmp rcurrentbar,0
@@ -441,11 +461,9 @@ main proc far
     call DrawHealthBar
     call DrawBullets
     pusha
-    mov cx,2
+    mov cx,2 
     looop: 
-    ;receivem
-    call MoveBullets
-    ;receivem   
+    call MoveBullets   
     loop looop
     popa
     call timer 
@@ -453,10 +471,8 @@ main proc far
     cmp timetodisplay,0ffh
     jz checkwinning
     continue:
-    ;receivem
              
     call wait
-    ;receivem
     jmp gameLoop
     
     checkwinning:
@@ -709,6 +725,7 @@ timer proc
     	jnz go
     	jmp texit
     go: dec timetodisplay
+        mov firedflag,0;Reset fired flag after the current second had passed
         mov currenttime,dh        
     texit:
         popa    
@@ -1530,21 +1547,21 @@ RandomBullets proc
     mov random2x,166
     mov random2y,30
     loopon: mov ax,random1x
-            mov tempx,ax
+            mov xtemp,ax
             mov ax,random1y
-            mov tempy,ax
+            mov ytemp,ax
             call addbullet
             mov ax,random2x
-            mov tempx,ax
+            mov xtemp,ax
             mov ax,random2y
-            mov tempy,ax
+            mov ytemp,ax
             call addbullet
             add random1y,10
             add random2y,10
             cmp random2y,155
             jb loopon 
             popa
-    ret
+    ret             
 RandomBullets endp
 end main 
  
