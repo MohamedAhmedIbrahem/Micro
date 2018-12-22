@@ -121,7 +121,6 @@ main proc far
     int 10h
     call drawWallpaper
     
-    call init
     call takeNames
     
     menu:    
@@ -133,6 +132,7 @@ main proc far
     call chat
     startGame:
     ;initilization
+    call init 
     call clearBullets
     mov timetodisplay,60d
     mov lcurrentbar,8
@@ -463,7 +463,17 @@ ignore1:
     pusha
     mov cx,2 
     looop: 
+<<<<<<< HEAD
     call MoveBullets   
+||||||| e570286... Merge branch 'mazen' into sayed
+    ;receivem
+    call MoveBullets
+    ;receivem   
+=======
+    receivem
+    call MoveBullets
+    receivem   
+>>>>>>> parent of e570286... Merge branch 'mazen' into sayed
     loop looop
     popa
     call timer 
@@ -471,6 +481,12 @@ ignore1:
     cmp timetodisplay,0ffh
     jz checkwinning
     continue:
+<<<<<<< HEAD
+||||||| e570286... Merge branch 'mazen' into sayed
+    ;receivem
+=======
+    receivem
+>>>>>>> parent of e570286... Merge branch 'mazen' into sayed
              
     call wait
     jmp gameLoop
@@ -1301,7 +1317,7 @@ chat  proc
     mov dx,0
     mov ah,2       
     int 10h 
-    ;call init  ;already called in the start of the program
+    call init
     
 lbl: 
 ;Check that Transmitter Holding Register is Empty
