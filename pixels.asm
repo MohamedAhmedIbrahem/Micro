@@ -49,11 +49,12 @@ winMes db ' won','$'
 mes6 db 'Draw :)','$' 
 ;players name
 msg0 db 'All names should start with a letter $'
-msg1 db 'Enter First Player Name:$'
+msg1 db 'Enter your Name:$'
 msg2 db 'Press Enter to continue$'
 GameInvitation db 'sent you a game invitation ,to accept press F2 $'
 ChatInvitation db 'sent you a chat invitation ,to accept press F1 $'
 FirstPName  db  16,?,16 dup('$'),'$'
+SecondPName db  16,?,16 dup('$'),'$'
 
 ;positions and constants
 PxWindowWidth equ 320
@@ -118,8 +119,12 @@ barrier    db  0bh
 UpperLine  dw  0b00h
 LowerLine  dw  1700h
 
-valuer   db ?   ;recieved value
-values   db ?   ;sent value
+valuer     db ?   ;recieved value
+values     db ?   ;sent value 
+
+sendvar    db 1
+recievevar db 0
+
 .code                   
 main proc far
     mov ax, @data 
@@ -131,13 +136,23 @@ main proc far
     
     call takeNames
     
-    menu:    
+    menu:
+        
     call drawMenu
     cmp mainmenuresult,1
     jz exitGame
     cmp mainmenuresult,2
-    jnz startGame
+    jnz startGame 
+    ;send chat invitation
+
+  	
+  	 
+
+  	
+  	
+    
     call outlinechat 
+    jmp menu
      
 
     
@@ -185,7 +200,8 @@ main proc far
 	mov al,values
 	;If empty put the VALUE in Transmit data register
   	mov dx, 3F8H		; Transmit data register
-  	out dx, al 
+  	out dx, al
+  	 
     lUp:       
     cmp ah, up 
     jnz lDown   
@@ -312,7 +328,7 @@ main proc far
     popa
     call ADDBULLET
      
-     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;recieve  
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;recieve  
     RECIEVE1:   
         ;Check that Data Ready
 		mov dx , 3FDH		; Line Status Register
@@ -717,7 +733,7 @@ timer proc
         ret
 timer endp  
 drawMenu proc    ;0: Start game 1:End game 2:Chatting
-    
+        
 	    mov ah,0
         mov al,3h
         int 10h  
@@ -734,35 +750,89 @@ drawMenu proc    ;0: Start game 1:End game 2:Chatting
         mov cx,80 
         mov dl,'_'
         nbar:int 21h
-        loop nbar
+        loop nbar 
+        
+
         
 l20: 
-        mov ah,0 
+        mov ah,1 
 	    int 16h 
-	    
+        jz recieveinvitation
+        mov ah,0
+        int 16h
+    mov sendvar,ah
+    cmp ah,one
+    jz chatinvitations
+    cmp ah,two
+    jz gameinvitations
+    conts: 
+    ;Check that Transmitter Holding Register is Empty
+	mov dx , 3FDH		;Line Status Register
+    In al , dx 			;Read Line Status
+	AND al , 00100000b
+	JZ Recieveinvitation                      
+	mov al,sendvar
+	;If empty put the VALUE in Transmit data register
+  	mov dx, 3F8H		; Transmit data register
+  	out dx, al
+  	
+  	RECIEVEINVITATION:   
+        ;Check that Data Ready
+		mov dx , 3FDH		; Line Status Register
+    	in al , dx 
+  		AND al , 1
+  		JZ l20 
+        ;If Ready read the VALUE in Receive data register
+  		mov dx , 03F8H
+  		in al , dx
+  		
+  		cmp al,one
+        jz chatinvitationr
+        cmp al,two
+        jz gameinvitationr
+    contr: 
+  		mov recievevar , al 
+  		cmp sendvar,al
+  		jnz l20
+  		        
+  	    mov dx, 3F8H		; Transmit data register
+  	    out dx, al
+    
+  	    mov ah,al
         cmp ah,one
-        jz chat
+        jz chat1
         cmp ah,two
-        jz game 
+        jz game1 
         cmp ah,esc
-        jz exit
+        jz exit1
         jmp l20
-
-
-chat:	  
-         mov mainmenuresult,0
-         mov dx,1600h
-         DisplayMessage dx,mes4
+    chatinvitations:
+        mov dx,1600h
+        DisplayMessage dx,mes4
+        jmp conts
+    gameinvitations:
+        mov dx,1600h
+        DisplayMessage dx,mes5
+        jmp conts    
+    chatinvitationr:
+        mov dx,1700h
+        DisplayMessage dx,Chatinvitation
+        jmp contr
+    gameinvitationr:
+        mov dx,1700h
+        DisplayMessage dx,gameinvitation
+        jmp contr
+    contm:    
+chat1:	  
+         mov mainmenuresult,2
          ret
          
-game:  
-         mov mainmenuresult,1
-         mov dx,1600h
-         DisplayMessage dx,mes5
+game1:  
+         mov mainmenuresult,0
          ret 
-         
-exit:  
-         mov mainmenuresult,2
+  
+exit1:  
+         mov mainmenuresult,1
          ret
 
 drawMenu endp 
@@ -822,7 +892,6 @@ rHealthBars:
     cmp si,di
     jnz rHealthBars
     DisplayMessage 1700h,FirstPname+2 
-    DisplayMessage 1719h,SecondPname+2 
 
     popa 
  k:  ret
