@@ -48,6 +48,8 @@ msg1 db 'Enter First Player Name:$'
 msg2 db 'Enter Second Player Name:$'
 FirstPName  db  16,?,16 dup('$'),'$'
 SecondPName db  16,?,16 dup('$'),'$'
+level1 db 'Level 1','$'
+level2 db 'Level 2','$'
 ;positions and constants
 PxWindowWidth equ 320
 PxWindowLength equ 200
@@ -66,6 +68,9 @@ rightLineX equ PxWindowWidth-1
 bwidth     equ 7
 bheight    equ 3
 ;scan codes
+one equ 2h
+two equ 3h
+esc equ 1h
 up equ 48h
 left equ 4bh
 down equ 50h
@@ -88,7 +93,7 @@ random1y dw ?
 random2x dw ?
 random2y dw ?
 firedflag db 0
-levelflag db 2
+levelflag db 1
 
 
 
@@ -102,7 +107,8 @@ lcurrentbar dw 8
 ;lines and barrages
 horizontalLinesY dw 0, ToplineY, BottomLineY
 verticalLinesX dw leftLineX, lBarrageX, rBarrageX, rightLineX
-mainmenuresult dw ?  
+mainmenuresult dw ?
+senttime dw ?  
 ;chatting 
 value db ?
 fcursorp dw 0
@@ -111,7 +117,8 @@ temppos  dw ?
 startpos dw ? 
 endpos   dw ? 
 valuer   db ?   ;recieved value
-values   db ?   ;sent value
+values   db ?   ;sent value 
+PlayerNumber dw 1;equal 1 when host 2 otherwise
 .code                   
 main proc far
     mov ax, @data 
@@ -120,11 +127,11 @@ main proc far
     mov ax, 0003h
     int 10h
     call drawWallpaper
-    
-    call init
     call takeNames
-    
-    menu:    
+    menu:
+    call init
+    mov valuer,0
+    mov values,0     
     call drawMenu
     cmp mainmenuresult,1
     jz exitGame
@@ -132,7 +139,16 @@ main proc far
     jnz startGame
     call chat
     startGame:
+    call chooselevel
+    cmp mainmenuresult,1
+    jnz chooselevel1
+    mov levelflag,1
+    jmp proceed
+chooselevel1:
+    cmp mainmenuresult,2
+    mov levelflag,2    
     ;initilization
+    proceed:
     call clearBullets
     mov timetodisplay,60d
     mov lcurrentbar,8
@@ -362,7 +378,7 @@ main proc far
     jmp cont
     
     rRight:
-    cmp ah, right
+    cmp ah, left
     jnz rLeft 
     
         ;upper right point of the tank
@@ -385,7 +401,7 @@ main proc far
     jmp cont
 
     rLeft:         
-    cmp ah, left
+    cmp ah, right
     jnz rshoot 
      
         ;upper left point of the cannon
@@ -451,8 +467,9 @@ main proc far
     jz  startwave
     cmp timetodisplay,10
     jnz ignore1
-startwave:    call randombullets
-              mov firedflag,1
+startwave:    
+          call randombullets
+          mov firedflag,1
 ignore1:    
     cmp lcurrentbar,0
     jz rwin
@@ -466,9 +483,23 @@ ignore1:
     call MoveBullets   
     loop looop
     popa
-    call timer 
+    ;---------------------------------------------------------------------------------------------------->
+    cmp PlayerNumber,2;not the host
+    jnz hostCalculateTime
+    ;Check that Data Ready
+		mov dx , 3FDH		; Line Status Register
+    	in al , dx 
+  		AND al , 1
+  		JZ cont 
+        ;If Ready read the VALUE in Receive data register
+  		mov dx , 03F8H
+  		in al , dx 
+  		mov timetodisplay,al
+        jmp exitcon
+hostCalculateTime:call timer 
     ;check who won
-    cmp timetodisplay,0ffh
+exitcon:
+   cmp timetodisplay,0ffh
     jz checkwinning
     continue:
              
@@ -726,7 +757,17 @@ timer proc
     	jmp texit
     go: dec timetodisplay
         mov firedflag,0;Reset fired flag after the current second had passed
-        mov currenttime,dh        
+        mov currenttime,dh
+         ;Check that Transmitter Holding Register is Empty
+    	mov dx , 3FDH		;Line Status Register
+        In al , dx 			;Read Line Status
+    	AND al , 00100000b
+    	JZ RECIEVE1                      
+    	mov al, timetodisplay
+    	;If empty put the VALUE in Transmit data register
+      	mov dx, 3F8H		; Transmit data register
+      	out dx, al 
+               
     texit:
         popa    
         ret
@@ -1562,6 +1603,42 @@ RandomBullets proc
             jb loopon 
             popa
     ret             
-RandomBullets endp
+RandomBullets endp 
+ChooseLevel proc
+       	    mov ah,0
+            mov al,3h
+            int 10h  
+        
+        DisplayMessage 0a18h,level1 
+        DisplayMessage 0c18h,level2
+        
+        
+        
+l201: 
+        mov ah,0 
+	    int 16h 
+	    
+        cmp ah,one
+        jz chat12
+        cmp ah,two
+        jz game12 
+        cmp ah,esc
+        jz exit12
+        jmp l201
+
+
+chat12:	  
+         mov mainmenuresult,1
+         ret
+         
+game12:  
+         mov mainmenuresult,2
+         ret 
+         
+exit12:  
+         mov mainmenuresult,0
+         
+    ret
+Chooselevel endp    
 end main 
  
