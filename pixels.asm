@@ -47,13 +47,16 @@ one  db 02h   ;scan code
 two  db 03h
 esc  db 01h
 winMes db ' won','$'
+lossMes db 'You lost','$' 
 mes6 db 'Draw :)','$' 
 ;players name
 msg0 db 'All names should start with a letter $'
 msg1 db 'Enter Your Name:$'
 msg2 db 'Press Enter to continue$'
-GameInvitation db 'sent you a game invitation ,to accept press F2 $'
-ChatInvitation db 'sent you a chat invitation ,to accept press F1 $'
+GameInvitation db 'Sent you a game invitation ,to accept press 2 $'
+ChatInvitation db 'Sent you a chat invitation ,to accept press 1 $'  
+level1         db '*To start Level 1 press 1$'
+level2         db '*To start Level 2 press 2$'
 FirstPName  db  16,?,16 dup('$'),'$'
 SecondPName db  16,?,16 dup('$'),'$'
 
@@ -120,12 +123,13 @@ lineEnd    db  79d
 barrier    db  0bh
 UpperLine  dw  0b00h
 LowerLine  dw  1700h
-
+clearclr   db  7
 valuer     db ?   ;recieved value
 values     db ?   ;sent value 
-
+irec       db 8
 sendvar    db 0E9h
-recievevar db 0E8h
+recievevar db 0E8h 
+level      db 0
 
 .code                   
 main proc far
@@ -167,12 +171,35 @@ main proc far
     mov ah,2ch
     int 21h
     mov currenttime,dh ;get current time 
-    call prepareObstacles
+    call prepareObstacles 
+    call clearScreen
+    call drawLines
+    call DRAWOBSTACLES
+    call drawLtank
+    call drawRtank
+     
+    cmp irec,0
+    jz gameloop
+    
+    waitingForLevels:
+    ;Check that Data Ready
+	mov dx , 3FDH		; Line Status Register
+    in al , dx 
+  	AND al , 1
+  	JZ waitingForLevels 
+    ;If Ready read the VALUE in Receive data register
+  	mov dx , 03F8H
+  	in al , dx
+  	mov level,al  
+  	cmp al,1
+  	jz gameloop
+  	cmp al,2
+  	jz gameloop
+  	jmp waitingforlevels
+  	
     gameLoop:
     call clearScreen
-
     call drawLines
-    
     call DRAWOBSTACLES
     call drawLtank
     call drawRtank 
@@ -402,28 +429,6 @@ main proc far
     rRight:
     cmp ah, right
     jnz rLeft 
-        ;upper right point of the tank
-        add rTankX, cannonWidth+tankWidth+1
-        sub rTankY, cannonLength 
-        check rTankX, rTankY, state, 0
-        sub rTankX, cannonWidth+tankWidth+1
-        add rTankY, cannonLength
-        cmp state, 1    
-        jnz cont 
-        ;lower right point of the tank
-        add rTankX, cannonWidth+tankWidth+1
-        add rTankY, cannonLength*2 
-        check rTankX, rTankY, state, 0
-        sub rTankX, cannonWidth+tankWidth+1
-        sub rTankY, cannonLength*2
-        cmp state, 1    
-        jnz cont
-    inc rTankX 
-    jmp cont
-
-    rLeft:         
-    cmp ah, left
-    jnz rshoot  
         ;upper left point of the cannon
         dec rTankX
         check rTankX, rTankY, state, 0
@@ -454,7 +459,29 @@ main proc far
         sub rTankY, cannonLength
         cmp state, 1    
         jnz cont 
-    dec rTankX
+    dec rTankX 
+    jmp cont
+
+    rLeft:         
+    cmp ah, left
+    jnz rshoot
+        ;upper right point of the tank
+        add rTankX, cannonWidth+tankWidth+1
+        sub rTankY, cannonLength 
+        check rTankX, rTankY, state, 0
+        sub rTankX, cannonWidth+tankWidth+1
+        add rTankY, cannonLength
+        cmp state, 1    
+        jnz cont 
+        ;lower right point of the tank
+        add rTankX, cannonWidth+tankWidth+1
+        add rTankY, cannonLength*2 
+        check rTankX, rTankY, state, 0
+        sub rTankX, cannonWidth+tankWidth+1
+        sub rTankY, cannonLength*2
+        cmp state, 1    
+        jnz cont
+    inc rTankX  
     jmp cont
     
     
@@ -490,6 +517,11 @@ main proc far
     call DrawHealthBar     
     call DrawBullets
     pusha
+    cmp level,1
+    jz temploop 
+    mov cx,5
+    jmp looop
+    temploop:
     mov cx,2
     looop:
     call MoveBullets   
@@ -622,7 +654,38 @@ TakeNames proc
            cmp al,7ah
            ja  again
            
-    forward:  
+
+    mov cx,15
+    mov di,0
+    mov si,0  
+    forward:
+    sendname:
+    ;Check that Transmitter Holding Register is Empty
+		mov dx , 3FDH		; Line Status Register
+        In al , dx 			;Read Line Status
+  		AND al , 00100000b
+  		JZ Sendname
+
+    ;If empty put the VALUE in Transmit data register
+  		mov dx , 3F8H		; Transmit data register
+  		mov  al,firstpname[di]
+  		out dx , al 
+  		
+  	Recievename:
+  		mov dx , 3FDH		; Line Status Register
+	    in al , dx 
+  		AND al , 1
+  		JZ Recievename
+
+ ;If Ready read the VALUE in Receive data register
+  		mov dx , 03F8H
+  		in al , dx 
+  		mov secondpname[si] , al
+  		
+  		inc si 
+  		inc di
+  		
+  		loop forward  
     popa
     ret
 takenames endp 
@@ -739,7 +802,7 @@ timer proc
     	jnz go
     	jmp texit
     go: dec timetodisplay
-        mov currenttime,dh        
+        mov currenttime,dh       
     texit:
         popa    
         ret
@@ -748,8 +811,9 @@ drawMenu proc    ;0: Start game 1:End game 2:Chatting
         
 	    mov ah,0
         mov al,3h
-        int 10h  
-        
+        int 10h 
+         
+        mov irec,8
         DisplayMessage 0a18h,mes1 
         DisplayMessage 0c18h,mes2
         DisplayMessage 0e18h,mes3 
@@ -764,6 +828,7 @@ drawMenu proc    ;0: Start game 1:End game 2:Chatting
         nbar:int 21h
         loop nbar 
         mov sendvar,0E9h
+        mov recievevar,0E8h
 l20: 
         mov ah,1 
 	    int 16h 
@@ -785,6 +850,10 @@ l20:
 	;If empty put the VALUE in Transmit data register
   	mov dx, 3F8H		; Transmit data register
   	out dx, al
+  	cmp al,recievevar
+  	jnz RECIEVEINVITATION
+  	mov irec,1
+  	jmp decide
   	
   	RECIEVEINVITATION:   
         ;Check that Data Ready
@@ -795,6 +864,7 @@ l20:
         ;If Ready read the VALUE in Receive data register
   		mov dx , 03F8H
   		in al , dx
+  		mov recievevar,al
   		
   		cmp al,one
         jz chatinvitationr
@@ -804,10 +874,8 @@ l20:
   		mov recievevar , al 
   		cmp sendvar,al
   		jnz l20
-  		        
-  	    mov dx, 3F8H		; Transmit data register
-  	    out dx, al
-    
+        mov irec,0;seeeeeeeeeeeend ana elly 3amel om elsend
+        decide:
   	    mov ah,al
         cmp ah,one
         jz chat1
@@ -819,34 +887,77 @@ l20:
     chatinvitations:
         mov dx,1600h
         DisplayMessage dx,mes4
+        add dx,33
+        DisplayMessage dx,Secondpname+2
         jmp conts
     gameinvitations:
         mov dx,1600h
         DisplayMessage dx,mes5
+        add dx,33
+        DisplayMessage dx,Secondpname+2
         jmp conts    
     chatinvitationr:
         mov dx,1700h
+        DisplayMessage dx,Secondpname+2
+        add dx,16
         DisplayMessage dx,Chatinvitation
         jmp contr
     gameinvitationr:
         mov dx,1700h
+        DisplayMessage dx,Secondpname+2
+        add dx,16
         DisplayMessage dx,gameinvitation
         jmp contr
     contm:    
 chat1:	  
          mov mainmenuresult,2
-         ret
-         
+         ret 
 game1:  
          mov mainmenuresult,0
+         cmp irec,1
+         jnz game2
+         ret
+         game2:
+         call levels
          ret 
-  
 exit1:  
          mov mainmenuresult,1
          ret
 
 drawMenu endp 
-
+levels  proc
+    pusha
+    mov ax,0600h 
+    mov bh,07 
+    mov cx,0 
+    mov dx,184FH 
+    int 10h 
+    popa
+    DisplayMessage  0a18h,level1
+    DisplayMessage  0c18h,level2
+    waitForlevel:
+        mov ah,0
+        int 16h 
+        cmp ah,one
+        jnz check2ndlevel
+        mov level,1
+        jmp gotlevel
+        check2ndlevel:
+        cmp ah,two
+        jnz waitForlevel
+        mov level,2
+        gotlevel:
+        ;Check that Transmitter Holding Register is Empty
+    	mov dx , 3FDH		;Line Status Register
+        In al , dx 			;Read Line Status
+    	AND al , 00100000b
+    	JZ gotlevel                      
+    	mov al,level
+    	;If empty put the VALUE in Transmit data register
+      	mov dx, 3F8H		; Transmit data register
+      	out dx, al
+    ret
+levels  ENDP    
 DRAWOBSTACLES  proc 
     pusha
     mov si,offset obstaclexposition
@@ -901,7 +1012,8 @@ rHealthBars:
     inc si
     cmp si,di
     jnz rHealthBars
-    DisplayMessage 1700h,FirstPname+2 
+    DisplayMessage 1700h,FirstPname+2  
+    DisplayMessage 1720h,SecondPname+2 
     popa 
  k:  ret
 DrawHealthBar ENDP
@@ -1097,7 +1209,7 @@ MoveBullets proc
              ;mov di,si
              jmp goahead  
 blowerpointcheck:;the scond check as befor but for the down left corner of bullet
-             sub cx,bheight
+             add cx,bheight  ;;;;;;;;;;;;;;kant sub
              mov auxulary+2,si;save offset of current obstacle y-postion
              cmp cx,[si]
              pushf
@@ -1123,7 +1235,7 @@ blowerpointcheck:;the scond check as befor but for the down left corner of bulle
              sub si,2
              sub counter,2
              mov di,si
-             sub [di],30;original y of abstacle  
+             ;sub [di],30;original y of abstacle ;;;;;;;;;;;;;;;;;;; 
              
        goahead:;------------------------------------------------------------------ 
              mov bx,[di];mov y to bx 
@@ -1374,7 +1486,7 @@ CHK:	in al , dx
   		AND al , 1
   		JZ lbl 
  ;If Ready read the VALUE in Receive data register
-  		mov dx,03F8H
+  		mov dx , 03F8H
   		in al , dx 
   		mov VALUE , al
   		cmp al,1Bh
@@ -1547,7 +1659,7 @@ scroll proc
     do_it:
     mov     ah, 06h ; scroll down function id.
     mov     al, 1   ; lines to scroll.
-    mov     bh, 07  ; attribute for new lines.
+    mov     bh, clearclr  ; attribute for new lines.
     mov     cx,startpos
     mov     dx,endpos
     int     10h
@@ -1565,6 +1677,16 @@ confoutline   proc
     mov ah,0
     mov al,3
     int 10h  
+    DisplayMessage 0,firstPName+2 
+    ;move cursor to draw line in the middle of the screen 
+    mov dx,0100h
+    mov ah,2       
+    int 10h
+    ;draw line
+    mov cx,80 
+    mov dl,'_'
+    mLine6:int 21h
+    loop mline6   
     ;move cursor to draw line in the middle of the screen 
     mov dx,0b00h
     mov ah,2       
@@ -1573,7 +1695,17 @@ confoutline   proc
     mov cx,80 
     mov dl,'_'
     mLine:int 21h
-    loop mline 
+    loop mline
+    DisplayMessage 0c00h,secondPName+2
+    ;move cursor to draw line in the middle of the screen 
+    mov dx,0d00h
+    mov ah,2       
+    int 10h
+    ;draw line
+    mov cx,80 
+    mov dl,'_'
+    mLine9:int 21h
+    loop mline9 
     mov dx,1700h
     mov ah,2       
     int 10h
@@ -1585,56 +1717,36 @@ confoutline   proc
     mov dx,0
     mov ah,2       
     int 10h
-     
-    mov UppersPos,0
+    ;configurations of outline chat 
+    mov UppersPos,0200h
     mov Upperepos,0A4fh
-    mov LowersPos,0c00h
+    mov LowersPos,0e00h
     mov Lowerepos,164fh  
     mov lineStart,0
     mov lineEnd,79d 
     mov barrier,0bh
     mov UpperLine,0b00h
     mov LowerLine,1700h
-    mov fcursorp,0
-    mov scursorp,0c00h
+    mov fcursorp,0200h
+    mov scursorp,0e00h 
+    mov clearclr,7
     ret
 confoutline   ENDP 
 
-confinline  proc 
-    ;text mode  
-    mov ah,0
-    mov al,3
-    int 10h  
-    ;move cursor to draw line in the middle of the screen 
-    mov dx,0b00h
-    mov ah,2       
-    int 10h
-    ;draw line
-    mov cx,80 
-    mov dl,'_'
-    mLine3:int 21h
-    loop mline3 
-    mov dx,0f00h
-    mov ah,2       
-    int 10h
-    mov cx,80 
-    mov dl,'_'
-    mLine4:int 21h
-    loop mline4
-    mov dx,0c00h
-    mov ah,2       
-    int 10h 
-    mov UppersPos,0c00h
-    mov Upperepos,0c4fh
-    mov LowersPos,0e00h
-    mov Lowerepos,0e4fh  
+confinline  proc  
+    ;configurations of inline chat
+    mov UppersPos,1500h
+    mov Upperepos,1527h
+    mov LowersPos,1700h
+    mov Lowerepos,1727h  
     mov lineStart,0
-    mov lineEnd,79d 
-    mov barrier,0dh
-    mov UpperLine,0d00h
-    mov LowerLine,0f00h
-    mov fcursorp,0c00h
-    mov scursorp,0e00h
+    mov lineEnd,39d 
+    mov barrier,16h
+    mov UpperLine,1600h
+    mov LowerLine,1800h 
+    mov fcursorp,1500h
+    mov scursorp,1700h
+    mov clearclr,0
     ret
 confinline  ENDP
 init   proc  
@@ -1657,19 +1769,6 @@ init   proc
     out dx,al 
     ret
 init   ENDP
-RandomBullets  proc
-    pusha  
-    
-    kkk:
-    mov xtemp,155
-    mov ytemp, topliney
-    call addbullet
-    inc ytemp
-    cmp ytemp,bottomliney 
-    jnz kkk
-        
-    popa
-    ret
-RandomBullets  endp    
+ 
 end main 
  
